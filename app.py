@@ -34,7 +34,6 @@ allowed_set = set(['png', 'jpg', 'jpeg'])  # allowed image formats for upload
 def get_image():
     """Gets an image file via POST request, feeds the image to the FaceNet model then saves both the original image
      and its resulting embedding from the FaceNet model in their designated folders.
-
         'uploads' folder: for image files
         'embeddings' folder: for embedding numpy files.
     """
@@ -52,15 +51,11 @@ def get_image():
         if filename == "":
             return render_template(
                 template_name_or_list="warning.html",
-                status= "No selected file!"
+                status="No selected file!"
             )
 
         if file and allowed_file(filename=filename, allowed_set=allowed_set):
             filename = secure_filename(filename=filename)
-
-
-
-            
             # Read image file as numpy array of RGB dimension
             img = imread(name=file, mode='RGB')
 
@@ -119,7 +114,6 @@ def get_image():
 def predict_image():
     """Gets an image file via POST request, feeds the image to the FaceNet model, the resulting embedding is then
     sent to be compared with the embeddings database. The image file is not stored.
-
     An html page is then rendered showing the prediction result.
     """
     if request.method == 'POST':
@@ -307,7 +301,7 @@ if __name__ == '__main__':
     """Server and FaceNet Tensorflow configuration."""
 
     # Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
-    model_path = 'model/20170512-110547.pb'
+    model_path = 'model/20170512-110547/20170512-110547.pb'
     facenet_model = load_model(model_path)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
