@@ -31,7 +31,7 @@ allowed_set = set(['png', 'jpg', 'jpeg'])  # allowed image formats for upload
 
 #Server and FaceNet Tensorflow configuration
 # Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
-model_path = 'model/20170512-110547/20170512-110547.pb'
+model_path = 'model/20170512-110547.pb'
 facenet_model = load_model(model_path)
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
