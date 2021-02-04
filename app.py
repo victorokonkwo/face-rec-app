@@ -29,6 +29,23 @@ uploads_path = os.path.join(APP_ROOT, 'uploads')
 embeddings_path = os.path.join(APP_ROOT, 'embeddings')
 allowed_set = set(['png', 'jpg', 'jpeg'])  # allowed image formats for upload
 
+#Server and FaceNet Tensorflow configuration
+# Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
+model_path = 'model/20170512-110547/20170512-110547.pb'
+facenet_model = load_model(model_path)
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+image_size = 160
+images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
+embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
+phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+
+# Initiate persistent FaceNet model in memory
+facenet_persistent_session = tf.Session(graph=facenet_model, config=config)
+
+# Create Multi-Task Cascading Convolutional (MTCNN) neural networks for Face Detection
+pnet, rnet, onet = detect_face.create_mtcnn(sess=facenet_persistent_session, model_path=None)
+
 
 @app.route('/upload', methods=['POST', 'GET'])
 def get_image():
@@ -298,23 +315,5 @@ def predict_page():
 
 
 if __name__ == '__main__':
-    """Server and FaceNet Tensorflow configuration."""
-
-    # Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
-    model_path = 'model/20170512-110547/20170512-110547.pb'
-    facenet_model = load_model(model_path)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    image_size = 160
-    images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
-    embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-    phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
-
-    # Initiate persistent FaceNet model in memory
-    facenet_persistent_session = tf.Session(graph=facenet_model, config=config)
-
-    # Create Multi-Task Cascading Convolutional (MTCNN) neural networks for Face Detection
-    pnet, rnet, onet = detect_face.create_mtcnn(sess=facenet_persistent_session, model_path=None)
-
-    # Start flask application on waitress WSGI server
-    serve(app=app, host='0.0.0.0', port=5000)
+    app.run()
+    
