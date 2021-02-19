@@ -1,1 +1,1 @@
-web gunicorn --worker=5 app:app
+web gunicorn -w 4 app:app
