@@ -6,7 +6,7 @@ import os
 from imutils.video import WebcamVideoStream  # For more performant non-blocking multi-threaded OpenCV Web Camera Stream
 from scipy.misc import imread
 from lib.mtcnn import detect_face  # for MTCNN face detection
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, Response
 from werkzeug.utils import secure_filename
 from waitress import serve
 from utils import (
@@ -28,9 +28,9 @@ APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 uploads_path = os.path.join(APP_ROOT, 'uploads')
 embeddings_path = os.path.join(APP_ROOT, 'embeddings')
 allowed_set = set(['png', 'jpg', 'jpeg'])  # allowed image formats for upload
+   
 
-#Server and FaceNet Tensorflow configuration
-# Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
+ # Load FaceNet model and configure placeholders for forward pass into the FaceNet model to calculate embeddings
 model_path = 'model/20170512-110547.pb'
 facenet_model = load_model(model_path)
 config = tf.ConfigProto()
@@ -40,10 +40,10 @@ images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
 embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
 phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
 
-# Initiate persistent FaceNet model in memory
+    # Initiate persistent FaceNet model in memory
 facenet_persistent_session = tf.Session(graph=facenet_model, config=config)
 
-# Create Multi-Task Cascading Convolutional (MTCNN) neural networks for Face Detection
+    # Create Multi-Task Cascading Convolutional (MTCNN) neural networks for Face Detection
 pnet, rnet, onet = detect_face.create_mtcnn(sess=facenet_persistent_session, model_path=None)
 
 
@@ -51,6 +51,7 @@ pnet, rnet, onet = detect_face.create_mtcnn(sess=facenet_persistent_session, mod
 def get_image():
     """Gets an image file via POST request, feeds the image to the FaceNet model then saves both the original image
      and its resulting embedding from the FaceNet model in their designated folders.
+
         'uploads' folder: for image files
         'embeddings' folder: for embedding numpy files.
     """
@@ -68,11 +69,15 @@ def get_image():
         if filename == "":
             return render_template(
                 template_name_or_list="warning.html",
-                status="No selected file!"
+                status= "No selected file!"
             )
 
         if file and allowed_file(filename=filename, allowed_set=allowed_set):
             filename = secure_filename(filename=filename)
+
+
+
+            
             # Read image file as numpy array of RGB dimension
             img = imread(name=file, mode='RGB')
 
@@ -131,6 +136,7 @@ def get_image():
 def predict_image():
     """Gets an image file via POST request, feeds the image to the FaceNet model, the resulting embedding is then
     sent to be compared with the embeddings database. The image file is not stored.
+
     An html page is then rendered showing the prediction result.
     """
     if request.method == 'POST':
@@ -205,10 +211,157 @@ def predict_image():
         )
 
 
+
+    """Detects faces in real-time via Web Camera."""
+
+    #embedding_dict = load_embeddings()
+    #if embedding_dict:
+    #    try:
+            # Start non-blocking multi-threaded OpenCV video stream
+            
+    
+                    # Keep showing camera stream even if no human faces are detected
+               # ret, jpeg = cv2.imencode('.jpg', frame)
+               # return jpeg.tobytes()
+            
+            #cap.stop()  # Stop multi-threaded Video Stream
+           # cv2.destroyAllWindows()
+   #         return render_template(template_name_or_list='index.html')
+
+
+
+  #  else:
+  #      return render_template(
+ #           template_name_or_list="warning.html",
+ #           status="No embedding files detected! Please upload image files for embedding!"
+ #       )
+
+
+def get_frame():
+
+    embedding_dict = load_embeddings()
+    if embedding_dict:
+        try:
+            cap = cv2.VideoCapture(0+cv2.CAP_DSHOW)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 500)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 500)
+    
+            while True:
+        #get camera frame
+         
+            
+                ret, frame = cap.read()  # Read frame
+        #print(frame)
+        
+       
+                # Resize frame to half its size for faster computation
+                frame = cv2.resize(src=frame, dsize= (0,0) , fx=0.8, fy=0.8)
+
+
+    
+
+
+                # Convert the image from BGR color (which OpenCV uses) to RGB color
+                #frame = frame[:, :, ::-1]
+
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
+        
+        #
+                if frame.size > 0:
+                    faces, rects = get_faces_live(
+                    img=frame,
+                    pnet=pnet,
+                    rnet=rnet,
+                    onet=onet,
+                    image_size=image_size
+                    )
+        
+        
+
+                    if faces:
+                        for i in range(len(faces)):
+                            face_img = faces[i]
+                            rect = rects[i]
+
+                            # Scale coordinates of face locations by the resize ratio
+                            rect = [coordinate for coordinate in rect]
+
+                            face_embedding = forward_pass(
+                                    img=face_img,
+                                    session=facenet_persistent_session,
+                                    images_placeholder=images_placeholder,
+                                    embeddings=embeddings,
+                                    phase_train_placeholder=phase_train_placeholder,
+                                    image_size=image_size
+                                )
+
+                                # Compare euclidean distance between this embedding and the embeddings in 'embeddings/'
+                            identity = identify_face(
+                                    embedding=face_embedding,
+                                    embedding_dict=embedding_dict
+                                )
+
+                            cv2.rectangle(
+                                    img=frame,
+                                    pt1=(rect[0], rect[1]),
+                                    pt2=(rect[2], rect[3]),
+                                    color=(0, 0, 255),
+                                    thickness=2
+                                )
+
+                            W = int(rect[2] - rect[0]) // 2
+
+                            cv2.putText(
+                                    img=frame,
+                                    text=identity,
+                                    org=(rect[0] + W - (W // 2), rect[1]-7),
+                                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                                    fontScale=0.5,
+                                    color=(0, 0, 255),
+                                    thickness=1,
+                                    lineType=cv2.LINE_AA
+                                )
+        
+
+                        ret, jpeg = cv2.imencode('.jpg', frame)
+        
+                    ret, jpeg = cv2.imencode('.jpg', frame)
+                    yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+                
+                else:
+                    continue
+
+
+
+        except Exception as e:
+            print(e)
+
+
+
+  #      
+                
+
+            
+        
+
+
+           
+                    # If there are human faces detected
+        
+
+
 @app.route("/")
 def index_page():
     """Renders the 'index.html' page for manual image file uploads."""
     return render_template(template_name_or_list="index.html")
+
+@app.route("/video_feed", methods=["GET"])
+def video_feed():
+    return Response(get_frame(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 @app.route("/predict")
@@ -218,5 +371,6 @@ def predict_page():
 
 
 if __name__ == '__main__':
-    app.run()
-    
+
+    # Start flask application on waitress WSGI server
+    app.run()    
