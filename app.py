@@ -242,7 +242,7 @@ def get_frame():
     embedding_dict = load_embeddings()
     if embedding_dict:
         try:
-            cap = cv2.VideoCapture(0+cv2.CAP_DSHOW)
+            cap = cv2.VideoCapture(0)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 500)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 500)
     
