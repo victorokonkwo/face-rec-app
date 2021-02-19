@@ -1,1 +1,1 @@
-web gunicorn --worker=5 --threads=2 app:app
+web gunicorn --worker=5 app:app
