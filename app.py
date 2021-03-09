@@ -7,6 +7,7 @@ from imutils.video import WebcamVideoStream  # For more performant non-blocking 
 from scipy.misc import imread
 from lib.mtcnn import detect_face  # for MTCNN face detection
 from flask import Flask, request, render_template, Response
+from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 from waitress import serve
 from utils import (
@@ -25,6 +26,7 @@ from utils import (
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+socketio = SocketIO(app)
 uploads_path = os.path.join(APP_ROOT, 'uploads')
 embeddings_path = os.path.join(APP_ROOT, 'embeddings')
 allowed_set = set(['png', 'jpg', 'jpeg'])  # allowed image formats for upload
@@ -373,4 +375,7 @@ def predict_page():
 if __name__ == '__main__':
 
     # Start flask application on waitress WSGI server
-    app.run()    
+    socketio.run(app)
+    
+    
+    
